@@ -91,8 +91,8 @@ const ORIENTATION_TIPS = [
   },
   {
     icon: <ShieldCheck size={16} />,
-    title: 'Privacy & Cross-Device Sync',
-    body: 'Zero telemetry. Your data stays on your device, with optional zero-knowledge encrypted cloud sync via Google Drive or GitHub.',
+    title: 'Privacy & Local Storage',
+    body: 'Zero telemetry. Your data stays securely on your device with local storage.',
   },
 ] as const
 

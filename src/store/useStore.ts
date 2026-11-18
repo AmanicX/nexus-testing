@@ -14,7 +14,6 @@ import { DEFAULT_BASE_URL } from '@/lib/groq'
 import { uid } from '@/lib/utils'
 import { DEFAULT_THEME_PALETTES } from '@/data/palettes'
 import { getApiKey, getCloudflareCredentials, getProviderKey, setApiKey } from '@/lib/credentials'
-import { recordTombstone } from '@/lib/sync/syncMerge'
 import { PROVIDER_PRESETS } from '@/lib/groq'
 
 export const MIN_AGE = 18
@@ -30,7 +29,7 @@ export function normalizeAge(raw: string | undefined | null): string {
 
 export interface UIState {
   settingsOpen: boolean
-  settingsTab: 'connection' | 'appearance' | 'persona' | 'themes' | 'commands' | 'data' | 'sync' | 'about'
+  settingsTab: 'connection' | 'appearance' | 'persona' | 'themes' | 'commands' | 'data' | 'about'
   characterModal: null | { tab: 'create' | 'browse' | 'generate'; editId?: string }
   worldModal: null | { tab: 'world' | 'cast'; editId?: string }
   sidebarOpen: boolean
@@ -246,7 +245,6 @@ export const useStore = create<State>()(
         })),
 
       deleteCharacter: (id) => {
-        recordTombstone('characters', id)
         set((s) => ({
           characters: s.characters.filter((c) => c.id !== id),
           conversations: s.conversations.filter((c) => c.characterId !== id),
@@ -299,7 +297,6 @@ export const useStore = create<State>()(
         })),
 
       deleteWorld: (id) => {
-        recordTombstone('worlds', id)
         set((s) => ({
           worlds: s.worlds.filter((w) => w.id !== id),
           characters: s.characters.filter((c) => c.worldId !== id),
@@ -405,7 +402,6 @@ export const useStore = create<State>()(
         })),
 
       deleteConversation: (id) => {
-        recordTombstone('conversations', id)
         set((s) => ({
           conversations: s.conversations.filter((c) => c.id !== id),
           activeConversationId:
@@ -468,7 +464,6 @@ export const useStore = create<State>()(
         })),
 
       removeMessage: (conversationId, messageId) => {
-        recordTombstone('messages', messageId)
         set((s) => ({
           conversations: s.conversations.map((c) =>
             c.id === conversationId

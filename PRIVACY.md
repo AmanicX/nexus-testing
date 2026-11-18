@@ -20,19 +20,9 @@
   - In web environments: stored via browser `IndexedDB` and `localStorage`.
   - In desktop environments (Electron): stored in your local user data directory.
   - In Android environments (Capacitor): stored within the sandboxed application container.
-- None of this data is ever synced to a central Eva server because **no central Eva server exists**.
+- None of this data is ever transmitted to a central Eva server because **no central Eva server exists**.
 
-### 3. Optional Cloud Backup & Cross-Device Synchronization (End-to-End Encrypted)
-- Cross-device sync and cloud backup are **strictly optional**. You can use Eva entirely offline or locally without connecting any third-party account.
-- If you choose to enable cloud backup via Google Drive or GitHub:
-  - **Zero-Knowledge Client-Side Encryption:** All application data is encrypted on your local device with **AES-256-GCM** using keys derived via **PBKDF2 with 600,000 iterations** before transmission.
-  - **No Plaintext in the Cloud:** Cloud providers (Google and GitHub) only ever receive encrypted ciphertext. They cannot inspect, decrypt, or access your characters, conversations, or worlds.
-  - **Isolated Storage Scopes:**
-    - Google Drive uses the isolated `appDataFolder` (`drive.appdata` scope), which is completely invisible to other applications and separate from your personal files.
-    - GitHub uses private, authenticated Gists (`gist` scope) owned exclusively by your account.
-  - **Zero Credential Transmission:** Your AI provider API keys, encryption passphrases, and OAuth access tokens are **never included** in cloud backup payloads. They remain stored locally in your operating system's secure credential storage.
-
-### 4. API Key & Credential Security
+### 3. API Key & Credential Security
 - Your API keys (Groq, OpenRouter, OpenAI, etc.) are stored strictly on your local machine.
 - Your keys are transmitted **only** to the specific provider endpoint URL that you configure in Settings.
 - When using local models (Ollama, LM Studio), network traffic never leaves your local area network (LAN).

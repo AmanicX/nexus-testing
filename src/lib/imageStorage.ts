@@ -1,6 +1,6 @@
 /**
  * Persistent Image Storage using browser IndexedDB with memory fallback.
- * Keeps raw image binaries out of localStorage and sync payloads.
+ * Keeps raw image binaries out of localStorage.
  */
 
 const DB_NAME = 'eva_image_store'

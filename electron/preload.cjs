@@ -11,8 +11,6 @@ const desktopApi = {
   getSecureCredential: (key) => ipcRenderer.invoke('secure-storage-get', key),
   setSecureCredential: (key, val) => ipcRenderer.invoke('secure-storage-set', key, val),
   deleteSecureCredential: (key) => ipcRenderer.invoke('secure-storage-delete', key),
-  // Google PKCE Loopback OAuth
-  startGoogleOAuth: (authUrl, port) => ipcRenderer.invoke('oauth-google-start', authUrl, port),
   // Dynamic Theme Icon Switching
   setThemeIcon: (theme) => ipcRenderer.send('theme-icon-change', theme),
 }

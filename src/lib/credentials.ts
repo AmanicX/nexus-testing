@@ -275,7 +275,7 @@ export async function clearApiKey(): Promise<void> {
 }
 
 /**
- * Stores an arbitrary secret string (e.g. OAuth tokens, sync passphrase).
+ * Stores an arbitrary secret string (e.g. provider tokens).
  */
 export async function setSecureSecret(key: string, value: string): Promise<void> {
   inMemorySecrets.set(key, value)

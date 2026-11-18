@@ -3,7 +3,6 @@ import {
   AlertCircle,
   ArrowLeft,
   Check,
-  Cloud,
   Cpu,
   Database,
   Download,
@@ -71,7 +70,6 @@ import {
 } from '@/data/palettes'
 import { Modal } from './Modal'
 import { CommandCheatsheet } from './CommandCheatsheet'
-import { SyncSettings } from './SyncSettings'
 import { cn, clamp, download } from '@/lib/utils'
 import type { AppearanceMode } from '@/types'
 import type { UIState } from '@/store/useStore'
@@ -132,14 +130,6 @@ const TABS: SettingsTabItem[] = [
     desc: 'Backups, export & storage usage',
     headerDesc: 'Export zero-knowledge JSON backups, restore saved databases, or reset local application storage.',
     icon: <Database size={16} />,
-    category: 'tools',
-  },
-  {
-    id: 'sync',
-    label: 'Cloud Sync',
-    desc: 'Zero-knowledge encrypted cloud sync',
-    headerDesc: 'End-to-end encrypted synchronization across devices via Google Drive or GitHub with 24-word recovery passphrase.',
-    icon: <Cloud size={16} />,
     category: 'tools',
   },
   {
@@ -1483,8 +1473,6 @@ export function SettingsModal() {
             </div>
 
         )
-      case 'sync':
-        return <SyncSettings />
       case 'about':
         return (
             <div className="space-y-6">
