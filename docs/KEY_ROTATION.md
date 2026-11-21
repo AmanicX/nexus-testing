@@ -5,7 +5,7 @@
 The initial repository contained a committed keystore (`android/nexus-release.keystore`) and hardcoded fallback passwords in workflow and build configurations. In accordance with security best practices:
 - **Status:** The old signing key is treated as **permanently compromised**.
 - **Important Security Notice:** Deleting the key and passwords from the current files does **not** revoke the certificate nor remove it from Git history. Anyone with clone access to past commits can extract the private key.
-- **Remediation in Code:** All embedded base64 keystores and password fallbacks have been eliminated from `release.yml`, `ci.yml`, and `build.gradle`. Release signing now strictly fails if required repository secrets are missing.
+- **Remediation in Code:** All embedded base64 keystores and password fallbacks have been eliminated from `release.yml`, `ci.yml`, and `build.gradle`. Production release signing strictly fails if required secrets are missing. Only `AmanicX/nexus-testing` permits an entirely unconfigured signing setup to produce a separately identified `Eva-android-testing.apk` (`com.nexus.chatstudio.testing`), never an update to production EVA.
 - **Application ID:** Preserved as `com.nexus.chatstudio` to maintain application identity and ecosystem compatibility.
 
 ---
@@ -85,12 +85,12 @@ Android 9 (API level 28) and higher support **APK Signature Scheme v3**, which p
 
 For users running legacy Android or upgrading without signature lineage:
 1. Open the existing Eva / Nexus app on Android.
-2. Go to **Settings → Cloud Backup & Sync** and connect a Google or GitHub account (or go to **Settings → Data Management** and export a local backup JSON).
-3. Confirm the backup is synced or saved safely.
+2. Export a local backup JSON using the app's data-management settings. Cloud sync has been removed.
+3. Confirm the backup is saved safely outside the app before uninstalling.
 4. Uninstall the older APK.
 5. Install the new release `Eva-android.apk`.
-6. Open **Settings → Cloud Backup & Sync**, connect the account, and tap **Restore from cloud** (or import the local backup JSON).
-7. All characters, conversations, messages, worlds, and preferences are seamlessly restored.
+6. Import the saved local backup JSON using the app's data-management settings.
+7. Check that your characters, conversations, messages, worlds, and preferences were restored.
 
 ---
 
