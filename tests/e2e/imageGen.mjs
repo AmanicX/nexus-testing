@@ -89,13 +89,34 @@ try {
   await open()
   const dialog = page.getByRole('dialog', { name: 'Image Gen' })
   await dialog.waitFor()
-  await dialog.getByRole('button', { name: 'Create four ideas' }).click()
+
+  // Gating: "Create four ideas" is disabled without explicit style choice
+  const createIdeasBtn = dialog.getByRole('button', { name: 'Create four ideas' })
+  assert.equal(await createIdeasBtn.isDisabled(), true, 'Create four ideas must be disabled before style selection')
+
+  // Explicit style selection enables generation
+  await dialog.getByRole('radio', { name: 'Auto / As written' }).click()
+  assert.equal(await createIdeasBtn.isDisabled(), false, 'Create four ideas must be enabled after style selection')
+
+  await createIdeasBtn.click()
   await dialog.getByRole('button', { name: 'Kite Workshop', exact: false }).waitFor()
   assert.equal(await dialog.locator('[aria-label="Image concepts"] button').count(), 4)
   assert(!JSON.stringify(requests).match(/OLD SECRET|PRIVATE MEMORY|PRIVATE BIOGRAPHY/))
   assert(JSON.stringify(requests).includes('Building a kite.'))
   await dialog.getByRole('button', { name: 'Kite Workshop', exact: false }).click()
   await dialog.locator('#image-prompt').fill('  My exact manual prompt.\n')
+
+  // Changing visual style invalidates stale concepts and deselects old concept while preserving prompt
+  await dialog.getByRole('radio', { name: 'Anime' }).click()
+  assert.equal(await dialog.locator('[aria-label="Image concepts"] button').count(), 0, 'Concepts must be invalidated on style change')
+  assert.equal(await dialog.locator('#image-prompt').inputValue(), '  My exact manual prompt.\n', 'Manual prompt must be preserved on style change')
+
+  // Replacement concepts generated with Anime style
+  await dialog.getByRole('button', { name: 'Create four ideas' }).click()
+  await dialog.getByRole('button', { name: 'Kite Workshop', exact: false }).waitFor()
+  assert.equal(await dialog.locator('[aria-label="Image concepts"] button').count(), 4)
+  assert.equal(await dialog.locator('#image-prompt').inputValue(), '  My exact manual prompt.\n')
+
   await dialog.getByRole('button', { name: 'Refresh four ideas' }).click()
   await dialog.getByRole('button', { name: 'Refresh four ideas' }).waitFor({ state: 'visible' })
   await page.waitForFunction(() => !document.querySelector('#image-prompt').disabled)
@@ -113,6 +134,13 @@ try {
     await page.waitForFunction(() => document.querySelector('[role="dialog"]').getBoundingClientRect().width > 0)
     const bounds = await dialog.boundingBox()
     assert(bounds.x >= -1 && bounds.x + bounds.width <= width + 1, `Overflow at ${width}px`)
+    if (width <= 640) {
+      const dragHandle = dialog.locator('button[data-drag-handle="true"]')
+      await dragHandle.waitFor()
+      assert.equal(await dragHandle.getAttribute('type'), 'button', 'Drag handle must be a button')
+      const label = await dragHandle.getAttribute('aria-label')
+      assert(label?.includes('dismiss'), 'Drag handle must have accessible dismissal label')
+    }
     await page.screenshot({ path: path.join(out, `image-gen-${width}.png`) })
   }
   // Simulate visual-only viewport shrink, as Android keyboards can do.
@@ -147,8 +175,17 @@ try {
   await open()
   await dialog.getByRole('button', { name: 'AI ideas', exact: true }).click()
   await dialog.locator('#image-idea').fill('birds')
+
+  // Expand my idea is disabled before selecting visual style
+  const expandBtn = dialog.getByRole('button', { name: 'Expand my idea' })
+  assert.equal(await expandBtn.isDisabled(), true, 'Expand my idea must be disabled without style selection')
+
+  // Choose style
+  await dialog.getByRole('radio', { name: 'Auto / As written' }).click()
+  assert.equal(await expandBtn.isDisabled(), false, 'Expand my idea should be enabled after style selection')
+
   const before = requests.length
-  await dialog.getByRole('button', { name: 'Expand my idea' }).click()
+  await expandBtn.click()
   await page.waitForFunction(() => document.querySelector('#image-prompt').value.includes('vivid red kite'))
   assert(!JSON.stringify(requests.slice(before)).includes('picnic'))
   holdWriter = true

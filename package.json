@@ -1,7 +1,7 @@
 {
   "name": "eva",
   "private": true,
-  "version": "2.5.0",
+  "version": "2.5.1",
   "description": "Eva - Advanced AI Chatbot — a privacy-first, memory-aware AI character and chat studio for any OpenAI-compatible provider (Groq, OpenRouter, Ollama, LM Studio).",
   "author": "Eva",
   "license": "MIT",

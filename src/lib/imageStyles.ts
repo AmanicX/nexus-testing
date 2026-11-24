@@ -1,5 +1,5 @@
 export const IMAGE_STYLES = [
-  { id: 'natural', label: 'As written', prompt: '' },
+  { id: 'natural', label: 'Auto / As written', prompt: '' },
   { id: 'anime', label: 'Anime', prompt: 'Anime illustration, expressive linework, cel shading and carefully composed color.' },
   { id: 'photo', label: 'Photographic', prompt: 'Photorealistic photography, natural textures, plausible light and optical depth.' },
   { id: 'cinematic', label: 'Cinematic', prompt: 'Cinematic composition, intentional dramatic lighting and film-like color grading.' },

@@ -34,17 +34,22 @@ export async function storeImageBlob(
   const objectUrl = URL.createObjectURL(blob)
   memoryImages.set(id, { id, blob, url: objectUrl, prompt })
 
-  try {
-    const db = await openDB()
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite')
-      const store = tx.objectStore(STORE_NAME)
-      const req = store.put({ id, blob, prompt, createdAt: Date.now() })
-      req.onsuccess = () => resolve()
-      req.onerror = () => reject(req.error)
-    })
-  } catch {
-    // Memory fallback if IndexedDB is restricted
+  if (typeof window !== 'undefined' && window.indexedDB) {
+    try {
+      const db = await openDB()
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite')
+        const store = tx.objectStore(STORE_NAME)
+        store.put({ id, blob, prompt, createdAt: Date.now() })
+        tx.oncomplete = () => resolve()
+        tx.onerror = () => reject(tx.error || new Error('IndexedDB transaction failed'))
+        tx.onabort = () => reject(tx.error || new Error('IndexedDB transaction aborted'))
+      })
+    } catch (error) {
+      URL.revokeObjectURL(objectUrl)
+      memoryImages.delete(id)
+      throw new Error(`Failed to save image to offline storage: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
   }
 
   return objectUrl
@@ -55,40 +60,103 @@ export async function getImageBlob(id: string): Promise<string | null> {
     return memoryImages.get(id)!.url
   }
 
-  try {
-    const db = await openDB()
-    const record = await new Promise<{ id: string; blob: Blob } | null>((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readonly')
-      const store = tx.objectStore(STORE_NAME)
-      const req = store.get(id)
-      req.onsuccess = () => resolve(req.result || null)
-      req.onerror = () => reject(req.error)
-    })
+  if (typeof window !== 'undefined' && window.indexedDB) {
+    try {
+      const db = await openDB()
+      const record = await new Promise<{ id: string; blob: Blob } | null>((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readonly')
+        const store = tx.objectStore(STORE_NAME)
+        const req = store.get(id)
+        req.onsuccess = () => resolve(req.result || null)
+        req.onerror = () => reject(req.error)
+      })
 
-    if (record?.blob) {
-      const url = URL.createObjectURL(record.blob)
-      memoryImages.set(id, { id, blob: record.blob, url, prompt: '' })
-      return url
+      if (record?.blob) {
+        const url = URL.createObjectURL(record.blob)
+        memoryImages.set(id, { id, blob: record.blob, url, prompt: '' })
+        return url
+      }
+    } catch {
+      /* ignore */
     }
-  } catch {
-    /* ignore */
   }
 
   return null
 }
 
+export async function deleteImage(id: string): Promise<void> {
+  const existing = memoryImages.get(id)
+  if (existing?.url && existing.url.startsWith('blob:')) {
+    try { URL.revokeObjectURL(existing.url) } catch { /* ignore */ }
+  }
+  memoryImages.delete(id)
+
+  if (typeof window !== 'undefined' && window.indexedDB) {
+    try {
+      const db = await openDB()
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite')
+        const store = tx.objectStore(STORE_NAME)
+        store.delete(id)
+        tx.oncomplete = () => resolve()
+        tx.onerror = () => reject(tx.error)
+        tx.onabort = () => reject(tx.error)
+      })
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+export async function deleteImages(ids: string[]): Promise<void> {
+  if (!ids.length) return
+  for (const id of ids) {
+    const existing = memoryImages.get(id)
+    if (existing?.url && existing.url.startsWith('blob:')) {
+      try { URL.revokeObjectURL(existing.url) } catch { /* ignore */ }
+    }
+    memoryImages.delete(id)
+  }
+
+  if (typeof window !== 'undefined' && window.indexedDB) {
+    try {
+      const db = await openDB()
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite')
+        const store = tx.objectStore(STORE_NAME)
+        for (const id of ids) {
+          store.delete(id)
+        }
+        tx.oncomplete = () => resolve()
+        tx.onerror = () => reject(tx.error)
+        tx.onabort = () => reject(tx.error)
+      })
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 export async function clearAllImages(): Promise<void> {
+  for (const item of memoryImages.values()) {
+    if (item.url && item.url.startsWith('blob:')) {
+      try { URL.revokeObjectURL(item.url) } catch { /* ignore */ }
+    }
+  }
   memoryImages.clear()
-  try {
-    const db = await openDB()
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite')
-      const store = tx.objectStore(STORE_NAME)
-      const req = store.clear()
-      req.onsuccess = () => resolve()
-      req.onerror = () => reject(req.error)
-    })
-  } catch {
-    /* ignore */
+  if (typeof window !== 'undefined' && window.indexedDB) {
+    try {
+      const db = await openDB()
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite')
+        const store = tx.objectStore(STORE_NAME)
+        store.clear()
+        tx.oncomplete = () => resolve()
+        tx.onerror = () => reject(tx.error)
+        tx.onabort = () => reject(tx.error)
+      })
+    } catch {
+      /* ignore */
+    }
   }
 }

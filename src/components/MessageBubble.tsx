@@ -197,7 +197,7 @@ export function MessageBubble({
             <button
               onClick={() => {
                 const targetUrl = resolvedImageUrl || message.image!.url
-                void download(`eva-scene-${message.id}.png`, targetUrl, 'image/png')
+                void download(`eva-scene-${message.id}`, targetUrl)
               }}
               className="grid size-7 place-items-center rounded-lg text-faint transition hover:bg-surface-2 hover:text-fg"
               aria-label="Download image"

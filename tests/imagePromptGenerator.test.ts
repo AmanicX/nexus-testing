@@ -64,6 +64,23 @@ describe('Image Gen prompt context and quality', () => {
     expect(await expandImageIdea({ idea: 'kite at a lake', settings })).toContain('red kite')
   })
 
+  it('displays expand-specific error instead of four-concepts error on malformed expansion response', async () => {
+    vi.mocked(chatGroq).mockResolvedValue('not valid json')
+    await expect(expandImageIdea({ idea: 'kite at a lake', settings })).rejects.toThrow(
+      'The prompt writer must return a valid expanded image prompt. Try another writer or edit a manual prompt.'
+    )
+  })
+
+  it('retries expansion once with targeted instruction on invalid structure before failing', async () => {
+    vi.mocked(chatGroq).mockResolvedValue(JSON.stringify({ wrongField: 'no prompt key' }))
+    await expect(expandImageIdea({ idea: 'kite at a lake', settings })).rejects.toThrow(
+      'The prompt writer must return a valid expanded image prompt. Try another writer or edit a manual prompt.'
+    )
+    expect(chatGroq).toHaveBeenCalledTimes(2)
+    const retryMsg = vi.mocked(chatGroq).mock.calls[1][0].messages[0].content
+    expect(retryMsg).toContain('return a single polished prompt')
+  })
+
   it.each([
     concepts.slice(0, 3),
     [...concepts, concepts[0]],

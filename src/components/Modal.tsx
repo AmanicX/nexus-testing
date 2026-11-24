@@ -87,11 +87,14 @@ export function Modal({
 
     const timer = setTimeout(() => {
       if (modalRef.current) {
-        const focusable = modalRef.current.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        )
+        const focusable = Array.from(
+          modalRef.current.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          ),
+        ).filter((el) => el.offsetParent !== null)
         if (focusable.length > 0) {
-          focusable[0].focus()
+          const initialFocus = focusable.find((el) => !el.dataset.dragHandle) || focusable[0]
+          initialFocus.focus()
         } else {
           modalRef.current.focus()
         }
@@ -210,17 +213,18 @@ export function Modal({
               SIZES[size],
             )}
           >
-            {/* Mobile drag handle / tap to go back */}
-            <div
+            {/* Mobile drag handle / keyboard-accessible dismissal */}
+            <button
+              type="button"
+              data-drag-handle="true"
               onPointerDown={(e) => dragControls.start(e)}
               onClick={onClose}
-              className="group flex flex-col items-center justify-center pt-3 pb-2 px-6 cursor-pointer sm:hidden select-none touch-none active:opacity-70 transition-opacity"
-              role="button"
-              aria-label="Tap or drag down to dismiss"
-              title="Tap or drag down to dismiss"
+              className="group flex w-full flex-col items-center justify-center pt-3 pb-2 px-6 cursor-pointer sm:hidden select-none touch-none border-0 bg-transparent outline-none focus-visible:outline-2 focus-visible:outline-accent active:opacity-70 transition-opacity"
+              aria-label="Tap, drag down or press Enter to dismiss"
+              title="Tap, drag down or press Enter to dismiss"
             >
-              <span className="h-1.5 w-12 rounded-full bg-border-strong group-hover:bg-fg/50 group-active:bg-accent transition-colors" />
-            </div>
+              <span className="h-1.5 w-12 rounded-full bg-border-strong group-hover:bg-fg/50 group-active:bg-accent group-focus-visible:ring-2 group-focus-visible:ring-accent transition-colors" />
+            </button>
 
             {(title || icon) && (
               <div

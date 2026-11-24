@@ -16,6 +16,26 @@ import { DEFAULT_THEME_PALETTES } from '@/data/palettes'
 import { getApiKey, getCloudflareCredentials, getProviderKey, setApiKey } from '@/lib/credentials'
 import { PROVIDER_PRESETS } from '@/lib/groq'
 import { isLocalUrl } from '@/lib/platform'
+import { deleteImages } from '@/lib/imageStorage'
+
+function cleanupOrphanedImages(
+  candidateImageIds: string[],
+  activeConversations: Conversation[],
+) {
+  if (!candidateImageIds.length) return
+  const stillReferenced = new Set<string>()
+  for (const conv of activeConversations) {
+    for (const msg of conv.messages) {
+      if (msg.type === 'image' && msg.image?.id) {
+        stillReferenced.add(msg.image.id)
+      }
+    }
+  }
+  const toDelete = candidateImageIds.filter((id) => !stillReferenced.has(id))
+  if (toDelete.length > 0) {
+    void deleteImages(toDelete)
+  }
+}
 
 export const MIN_AGE = 18
 
@@ -418,26 +438,49 @@ export const useStore = create<State>()(
         })),
 
       deleteConversation: (id) => {
-        set((s) => ({
-          conversations: s.conversations.filter((c) => c.id !== id),
+        const state = get()
+        const target = state.conversations.find((c) => c.id === id)
+        const imageIds: string[] = []
+        if (target) {
+          for (const m of target.messages) {
+            if (m.type === 'image' && m.image?.id) imageIds.push(m.image.id)
+          }
+        }
+        const remaining = state.conversations.filter((c) => c.id !== id)
+        set(() => ({
+          conversations: remaining,
           activeConversationId:
-            s.activeConversationId === id ? null : s.activeConversationId,
+            state.activeConversationId === id ? null : state.activeConversationId,
         }))
+        cleanupOrphanedImages(imageIds, remaining)
       },
 
-      clearConversation: (id) =>
-        set((s) => ({
-          conversations: s.conversations.map((c) =>
-            c.id === id
-              ? {
-                  ...c,
-                  messages: c.messages.filter((m) => m.role === 'assistant').slice(0, 1),
-                  memory: '',
-                  updatedAt: Date.now(),
-                }
-              : c,
-          ),
-        })),
+      clearConversation: (id) => {
+        const state = get()
+        const target = state.conversations.find((c) => c.id === id)
+        const imageIds: string[] = []
+        if (target) {
+          const preserved = target.messages.filter((m) => m.role === 'assistant').slice(0, 1)
+          const preservedSet = new Set(preserved.map((m) => m.id))
+          for (const m of target.messages) {
+            if (!preservedSet.has(m.id) && m.type === 'image' && m.image?.id) {
+              imageIds.push(m.image.id)
+            }
+          }
+        }
+        const updated = state.conversations.map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                messages: c.messages.filter((m) => m.role === 'assistant').slice(0, 1),
+                memory: '',
+                updatedAt: Date.now(),
+              }
+            : c,
+        )
+        set(() => ({ conversations: updated }))
+        cleanupOrphanedImages(imageIds, updated)
+      },
 
       togglePin: (id) =>
         set((s) => ({
@@ -480,16 +523,23 @@ export const useStore = create<State>()(
         })),
 
       removeMessage: (conversationId, messageId) => {
-        set((s) => ({
-          conversations: s.conversations.map((c) =>
-            c.id === conversationId
-              ? {
-                  ...c,
-                  messages: c.messages.filter((m) => m.id !== messageId),
-                }
-              : c,
-          ),
-        }))
+        const state = get()
+        const conv = state.conversations.find((c) => c.id === conversationId)
+        const msg = conv?.messages.find((m) => m.id === messageId)
+        const imageId = (msg?.type === 'image' && msg.image?.id) ? msg.image.id : null
+
+        const updated = state.conversations.map((c) =>
+          c.id === conversationId
+            ? {
+                ...c,
+                messages: c.messages.filter((m) => m.id !== messageId),
+              }
+            : c,
+        )
+        set(() => ({ conversations: updated }))
+        if (imageId) {
+          cleanupOrphanedImages([imageId], updated)
+        }
       },
 
       setMemory: (conversationId, memory) =>

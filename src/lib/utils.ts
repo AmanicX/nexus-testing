@@ -67,11 +67,45 @@ export function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n))
 }
 
+export function getExtensionForMime(mime: string): string {
+  switch (mime.toLowerCase().split(';')[0].trim()) {
+    case 'image/jpeg':
+    case 'image/jpg':
+      return 'jpg'
+    case 'image/webp':
+      return 'webp'
+    case 'image/png':
+      return 'png'
+    case 'image/gif':
+      return 'gif'
+    case 'image/svg+xml':
+      return 'svg'
+    default:
+      return ''
+  }
+}
+
+export function detectImageMimeFromBytes(bytes: Uint8Array): string {
+  if (bytes.length >= 8 && bytes[0] === 137 && bytes[1] === 80 && bytes[2] === 78 && bytes[3] === 71) {
+    return 'image/png'
+  }
+  if (bytes.length >= 3 && bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255) {
+    return 'image/jpeg'
+  }
+  if (bytes.length >= 12 && bytes[0] === 82 && bytes[1] === 73 && bytes[2] === 70 && bytes[3] === 70) {
+    const riffType = String.fromCharCode(bytes[8], bytes[9], bytes[10], bytes[11])
+    if (riffType === 'WEBP') return 'image/webp'
+  }
+  return ''
+}
+
 export async function download(filename: string, content: string | Blob, mimeType?: string) {
   let url = ''
   let revoke = false
+  let resolvedMime = mimeType || ''
 
   if (content instanceof Blob) {
+    resolvedMime = content.type || resolvedMime
     url = URL.createObjectURL(content)
     revoke = true
   } else if (typeof content === 'string') {
@@ -81,9 +115,19 @@ export async function download(filename: string, content: string | Blob, mimeTyp
       content.startsWith('http:') ||
       content.startsWith('https:')
     ) {
+      if (content.startsWith('data:')) {
+        const match = /^data:([^;,]+)/i.exec(content)
+        if (match) resolvedMime = match[1]
+      }
       try {
         const res = await fetch(content)
         const blob = await res.blob()
+        resolvedMime = blob.type || resolvedMime
+        if (!resolvedMime || resolvedMime === 'application/octet-stream') {
+          const buffer = await blob.arrayBuffer()
+          const detected = detectImageMimeFromBytes(new Uint8Array(buffer.slice(0, 16)))
+          if (detected) resolvedMime = detected
+        }
         url = URL.createObjectURL(blob)
         revoke = true
       } catch {
@@ -91,15 +135,27 @@ export async function download(filename: string, content: string | Blob, mimeTyp
       }
     } else {
       const type = mimeType || (filename.endsWith('.json') ? 'application/json' : 'text/plain;charset=utf-8')
+      resolvedMime = type
       const blob = new Blob([content], { type })
       url = URL.createObjectURL(blob)
       revoke = true
     }
   }
 
+  // Preserve and apply the correct extension for known formats (PNG, JPEG, WebP)
+  let finalFilename = filename
+  const ext = getExtensionForMime(resolvedMime)
+  if (ext) {
+    if (/\.(png|jpe?g|webp|gif|svg)$/i.test(finalFilename)) {
+      finalFilename = finalFilename.replace(/\.(png|jpe?g|webp|gif|svg)$/i, `.${ext}`)
+    } else {
+      finalFilename = `${finalFilename}.${ext}`
+    }
+  }
+
   const a = document.createElement('a')
   a.href = url
-  a.download = filename
+  a.download = finalFilename
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
